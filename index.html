@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPG Store</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="games.js"></script>
+<script src="auth.js"></script>
+<style>
+:root{--bg:#121212;--panel:#202020;--panel2:#2a2a2a;--line:#333;--text:#f5f5f5;--mute:#9a9a9a;--blue:#0078f2}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:"Segoe UI","Hiragino Sans",sans-serif;min-height:100vh}
+button{font:inherit;cursor:pointer;border:0;color:inherit}
+i[data-lucide]{width:18px;height:18px;vertical-align:-3px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:4px;font-weight:700;background:var(--panel2);transition:.2s}
+.btn:hover{background:#3a3a3a}
+.btn.primary{background:var(--blue)}.btn.primary:hover{background:#2a8dff}
+.btn.danger:hover{background:#c0392b}
+.view{display:none}.view.active{display:block;animation:fade .4s}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+/* hero */
+.row{display:flex;gap:10px}
+/* grid */
+/* store */
+/* overlays */
+.overlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.75)}
+.overlay.open{display:flex;animation:fade .25s}
+.modal{width:min(880px,94vw);max-height:92vh;overflow:auto;background:var(--panel);border-radius:12px;position:relative}
+.modal .bn{aspect-ratio:16/9;background-size:cover;background-position:center}
+.modal .body{padding:24px 28px 28px}
+.modal .x{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);border-radius:50%;width:36px;height:36px;display:grid;place-items:center}
+.modal h2{font-size:28px;margin:6px 0 10px}
+.tag{display:inline-block;background:var(--panel2);padding:3px 10px;border-radius:12px;font-size:12px;color:var(--mute)}
+.modal p{line-height:1.7;color:#ccc;margin-bottom:20px;white-space:pre-wrap}
+#loader{background:var(--bg);z-index:150}
+.spin{width:54px;height:54px;border:5px solid #333;border-top-color:var(--blue);border-radius:50%;animation:sp .9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* admin */
+.login{width:min(440px,92vw);padding:28px}
+.login h2{margin-bottom:8px}.login small{display:block;color:var(--mute);margin:8px 0 16px;line-height:1.5}
+input[type=text],input[type=url],input[type=password],textarea,select{width:100%;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:#fff;font:inherit;outline:0}
+input:focus,textarea:focus,select:focus{border-color:var(--blue)}
+.adm{display:grid;grid-template-columns:380px 1fr;gap:28px;align-items:start}
+@media(max-width:900px){.adm{grid-template-columns:1fr}.dgrid{grid-template-columns:1fr!important}header{padding:10px 14px}.wrap{padding:16px}}
+.back{background:none;color:var(--mute);margin-bottom:12px;padding:6px 0}.back:hover{color:#fff}
+.dt{font-size:40px;font-weight:900;margin-bottom:8px}.dmeta{display:flex;gap:16px;align-items:center;color:var(--mute);font-size:14px;margin-bottom:20px}
+.dgrid{display:grid;grid-template-columns:1fr 340px;gap:32px;align-items:start}
+.dmain{aspect-ratio:16/9;border-radius:12px;background:#000 center/cover no-repeat}
+.dthumbs{display:flex;align-items:center;gap:10px;margin:14px 0 20px}
+.dthumbs .th{width:110px;aspect-ratio:16/9;border-radius:6px;background:#000 center/cover no-repeat;opacity:.55;cursor:pointer;border:2px solid transparent}
+.dthumbs .th.on{opacity:1;border-color:#fff}
+.ar{width:38px;height:38px;border-radius:50%;background:var(--panel2);display:grid;place-items:center}
+.ddesc{line-height:1.8;color:#ccc;white-space:pre-wrap}
+.dlogo{aspect-ratio:4/3;border-radius:10px;background:#000 center/cover no-repeat;margin-bottom:18px}
+aside .tag{margin-bottom:16px}.big{width:100%;justify-content:center;padding:14px;margin-bottom:12px}
+.ir{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);font-size:14px;color:var(--mute)}.ir b{color:#fff;font-weight:600}
+.panel{background:var(--panel);border-radius:10px;padding:20px}
+.panel h3{margin-bottom:14px}
+.f{margin-bottom:12px}.f label{display:block;font-size:12px;color:var(--mute);margin-bottom:4px}
+.f .or{font-size:11px;color:var(--mute);margin:4px 0}
+.item{display:flex;align-items:center;gap:14px;padding:10px;border-bottom:1px solid var(--line)}
+.item img{width:96px;height:54px;object-fit:cover;border-radius:6px;background:#000}
+.item .m{flex:1;min-width:0}.item .m b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tg{padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700;background:#444;color:#ccc}
+.tg.on{background:#1e8e3e;color:#fff}
+
+:root{--blue:#7c6cff;--a:#7c6cff;--b:#2ee6c5;--bg:#0a0a11;--panel:#161620;--panel2:#202030;--line:#2a2a3a;--mute:#9a9ab0}
+body{background:radial-gradient(1200px 600px at 80% -10%,#1a1440 0,transparent 60%) fixed,var(--bg)}
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:12px 32px;background:rgba(10,10,17,.5);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid transparent;transition:.3s}
+header.sc{background:rgba(10,10,17,.9);border-color:var(--line)}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:900;font-size:18px;white-space:nowrap}
+.logo .mk{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,var(--a),var(--b));color:#07070d;transform:rotate(-8deg)}
+.logo em{font-style:normal;font-weight:300;letter-spacing:4px;color:var(--mute);font-size:12px}
+nav{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+nav button{background:none;padding:8px 16px;border-radius:20px;color:var(--mute);font-weight:600;white-space:nowrap;transition:.2s}
+nav button:hover{color:#fff;background:rgba(255,255,255,.07)}
+nav button.active{color:#07070d;background:linear-gradient(120deg,var(--a),var(--b))}
+.btn{border-radius:22px}.btn.primary{background:linear-gradient(120deg,var(--a),var(--b));color:#07070d;font-weight:800}.btn.primary:hover{background:linear-gradient(120deg,var(--a),var(--b));filter:brightness(1.12)}
+.wrap{max-width:1500px;margin:auto;padding:28px 32px 70px}
+.hero{position:relative;height:min(78vh,680px);min-height:440px;margin-top:-66px;overflow:hidden}
+.hs{position:absolute;inset:0;background:#000 center/cover;opacity:0;transform:scale(1.07) translateX(40px);transition:opacity .9s ease,transform 1.2s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+.hs.on{opacity:1;transform:none;pointer-events:auto}
+.hs::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,17,.15),rgba(10,10,17,.1) 45%,rgba(10,10,17,.8)),linear-gradient(0deg,var(--bg),transparent 38%)}
+.hp{position:absolute;right:max(84px,6vw);bottom:16%;width:min(440px,calc(100% - 64px));padding:26px;border-radius:18px;background:rgba(14,14,24,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);transform:translateY(24px);opacity:0;transition:.8s .3s}
+.hs.on .hp{transform:none;opacity:1}
+.hp h2{font-size:clamp(26px,3.4vw,42px);margin:10px 0}
+.hp p{color:#cfcfe0;font-size:14px;line-height:1.7;margin-bottom:18px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ha{position:absolute;top:50%;z-index:5;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);display:grid;place-items:center;transform:translateY(-50%);transition:.2s}
+.ha:hover{background:var(--a)}.ha.l{left:20px}.ha.r{right:20px}
+.dots{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:8px;z-index:5}
+.dots span{width:8px;height:8px;border-radius:8px;background:rgba(255,255,255,.4);cursor:pointer;transition:.35s}
+.dots span.on{width:30px;background:linear-gradient(90deg,var(--a),var(--b))}
+.rowsec{margin-bottom:30px}
+.sh{display:flex;justify-content:space-between;align-items:flex-end}
+.sh .en{font-size:11px;letter-spacing:3px;color:var(--b);font-weight:700;padding-left:14px}
+.sh h3{font-size:24px;position:relative;padding-left:14px}
+.sh h3::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:4px;border-radius:4px;background:linear-gradient(var(--a),var(--b))}
+.arr{display:flex;gap:8px}.arr button{width:36px;height:36px;border-radius:50%;background:var(--panel2);display:grid;place-items:center;transition:.2s}.arr button:hover{background:var(--a)}
+.rail{--n:4;--g:18px;display:flex;gap:var(--g);overflow-x:auto;scroll-snap-type:x mandatory;padding:18px 6px 24px;margin:0 -6px;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.rail .card{flex:0 0 calc((100% - (var(--n) - 1) * var(--g)) / var(--n));scroll-snap-align:start}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:24px;padding:8px 6px}
+.card{cursor:pointer}
+.card .im{aspect-ratio:16/9;border-radius:14px;background:linear-gradient(135deg,#242438,#14141e) center/cover;position:relative;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.35);transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s,filter .35s}
+.card:hover .im{transform:scale(1.05);filter:brightness(1.12);box-shadow:0 16px 40px rgba(0,0,0,.6),0 0 0 1px rgba(124,108,255,.7)}
+.card .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:14px;background:linear-gradient(0deg,rgba(8,8,14,.92),transparent 70%);opacity:0;transition:.3s}
+.card:hover .ov{opacity:1}
+.card .ov p{font-size:12px;color:#d6d6e6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pill{align-self:flex-start;font-size:12px;font-weight:800;padding:6px 12px;border-radius:20px;background:linear-gradient(120deg,var(--a),var(--b));color:#07070d;transform:translateY(8px);transition:.3s}
+.card:hover .pill{transform:none}
+.card .t{font-weight:700;margin-top:12px}.card .g{color:var(--mute);font-size:12px;margin-top:2px}
+.badge{position:absolute;top:10px;left:10px;z-index:2;font-size:11px;font-weight:900;letter-spacing:1px;padding:4px 9px;border-radius:6px;background:#fff;color:#07070d}
+.ph .en{font-size:11px;letter-spacing:3px;color:var(--b);font-weight:700}.ph h1{font-size:34px;margin:4px 0 6px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:16px 0 20px}
+.search{display:flex;align-items:center;gap:8px;background:var(--panel2);padding:10px 16px;border-radius:24px;min-width:280px}
+.search input{background:none;border:0;outline:0;color:#fff;width:100%;font:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:10px;padding:14px 0 0}
+.chip{background:var(--panel2);padding:9px 18px;border-radius:22px;font-size:14px;transition:.2s}.chip:hover{background:#2c2c44}
+.chip.active{background:linear-gradient(120deg,var(--a),var(--b));color:#07070d;font-weight:700}
+.empty{color:var(--mute);padding:40px;text-align:center;grid-column:1/-1;width:100%}
+.rank{display:flex;align-items:center;gap:18px;padding:12px 18px;border-radius:14px;background:var(--panel);margin-bottom:10px;cursor:pointer;transition:.25s}
+.rank:hover{background:var(--panel2);transform:translateX(6px)}
+.rank .no{font-size:34px;font-weight:900;width:64px;text-align:center;background:linear-gradient(var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+.rth{width:160px;aspect-ratio:16/9;border-radius:8px;background:#222 center/cover;flex:none}
+.rank .m{flex:1;min-width:0}.rank b{display:block;font-size:18px}.rank .m span{color:var(--mute);font-size:13px}
+@media(min-width:1900px){.rail{--n:5}}
+@media(max-width:1199px){.rail{--n:3}}
+@media(max-width:899px){.rail{--n:2}}
+@media(max-width:599px){.rail{--n:1.4}.wrap{padding:18px 14px 50px}header{padding:10px 14px;gap:10px}.logo em,#adminBtn span{display:none}.hero{min-height:480px}.hp{right:14px;left:14px;width:auto;bottom:56px;padding:18px}.ha{display:none}.rth{width:96px}.rank .no{width:44px;font-size:24px}.dt{font-size:28px}}
+.tabs{display:flex;background:var(--panel2);border-radius:22px;padding:4px;margin-bottom:18px}.tabs button{flex:1;padding:9px;border-radius:18px;background:none;font-weight:700;color:var(--mute)}.tabs button.on{background:linear-gradient(120deg,var(--a),var(--b));color:#07070d}
+.gbtn{width:100%;justify-content:center;background:#fff;color:#1f1f1f;margin-bottom:14px}.gbtn:hover{background:#eee}.gbtn:disabled{opacity:.4;cursor:not-allowed}.gbtn b{color:#4285f4;font-size:18px}
+.or2{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:12px;margin-bottom:14px}.or2::before,.or2::after{content:"";flex:1;height:1px;background:var(--line)}
+.err{color:#ff7b7b;font-size:13px;min-height:18px;margin-bottom:8px}
+#umenu{display:none;position:absolute;right:0;top:calc(100% + 8px);min-width:200px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.5)}#umenu.open{display:block}
+#umInfo{font-size:12px;color:var(--mute);margin-bottom:10px;word-break:break-all}#umOut{width:100%;padding:9px;border-radius:8px;background:var(--panel2)}#umOut:hover{background:#c0392b}
+.av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));color:#07070d;display:grid;place-items:center;font-size:12px;font-weight:900;overflow:hidden}.av img{width:100%;height:100%;object-fit:cover}
+#userBtn{max-width:180px}#userBtn span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:599px){#userBtn span:last-child{display:none}}
+</style>
+</head>
+<body>
+<header id="hd">
+  <div class="logo" id="logo"><span class="mk">E</span>EPG<em>STORE</em></div>
+  <nav><button data-view="home" class="active">ホーム</button><button data-view="store">ストア</button><button data-view="new">新着</button><button data-view="ranking">ランキング</button></nav>
+  <div class="row">
+    <button class="btn" id="searchBtn" title="検索"><i data-lucide="search"></i></button>
+    <div style="position:relative"><button class="btn" id="userBtn"><i data-lucide="user"></i><span>ログイン</span></button>
+      <div id="umenu"><div id="umInfo"></div><button id="umOut">ログアウト</button></div></div>
+    <button class="btn" id="adminBtn"><i data-lucide="shield"></i><span>管理者</span></button>
+    <button class="btn" id="logoutBtn" style="display:none"><i data-lucide="log-out"></i></button>
+  </div>
+</header>
+<main>
+  <section class="view active" id="view-home"><div class="hero" id="hero"></div><div class="wrap" id="homeRows"></div></section>
+  <section class="view wrap" id="view-store">
+    <div class="ph"><span class="en">STORE</span><h1>ゲームを探す</h1></div>
+    <div class="filters"><div class="search"><i data-lucide="search"></i><input id="q" placeholder="タイトルで検索"></div><div class="row" id="chips" style="flex-wrap:wrap"></div></div>
+    <div class="sgrid" id="storeGrid"></div>
+  </section>
+  <section class="view wrap" id="view-new"><div class="ph"><span class="en">NEW RELEASES</span><h1>新着ゲーム</h1></div><div class="sgrid" id="newGrid"></div></section>
+  <section class="view wrap" id="view-ranking"><div class="ph" style="margin-bottom:18px"><span class="en">RANKING</span><h1>人気ランキング</h1></div><div id="rankList"></div></section>
+  <section class="view wrap" id="view-admin">
+    <h3 class="sec">管理ダッシュボード</h3>
+    <div class="adm">
+      <div class="panel">
+        <h3>新規ゲーム追加</h3>
+        <div class="f"><label>タイトル</label><input type="text" id="aTitle"></div>
+        <div class="f"><label>ジャンル</label>
+          <select id="aGenre"><option>Action</option><option>RPG</option><option>Racing</option><option>FPS</option><option>Horror</option><option>Simulation</option><option>Adventure</option><option>Engine</option></select></div>
+        <div class="f"><label>説明</label><textarea id="aDesc" rows="3"></textarea></div>
+        <div class="f"><label>バナー画像</label><input type="file" id="aBannerF" accept="image/*"><div class="or">または URL</div><input type="url" id="aBannerU" placeholder="https://..."></div>
+        <div class="f"><label>カバー画像</label><input type="file" id="aCoverF" accept="image/*"><div class="or">または URL</div><input type="url" id="aCoverU" placeholder="https://..."></div>
+        <div class="f"><label>EXE ファイル</label><input type="file" id="aExeF" accept=".exe"><div class="or">または URL</div><input type="url" id="aExeU" placeholder="https://.../game.exe"></div>
+        <button class="btn primary" id="addBtn" style="width:100%;justify-content:center"><i data-lucide="plus"></i>追加</button>
+      </div>
+      <div class="panel"><h3>登録済みゲーム</h3><div id="adminList"></div></div>
+    </div>
+  </section>
+<section class="view wrap" id="view-detail"><div id="detailPage"></div></section>
+</main>
+
+<!-- 編集モーダル -->
+<div class="overlay" id="edit"><div class="modal login" style="width:min(520px,94vw)">
+  <h2>ゲームを編集</h2><div style="height:12px"></div>
+  <div class="f"><label>タイトル</label><input type="text" id="eTitle"></div>
+  <div class="f"><label>ジャンル</label><select id="eGenre"><option>Action</option><option>RPG</option><option>Racing</option><option>FPS</option><option>Horror</option><option>Simulation</option><option>Adventure</option><option>Engine</option></select></div>
+  <div class="f"><label>説明</label><textarea id="eDesc" rows="3"></textarea></div>
+  <div class="f"><label>バナー画像（変更する場合のみ）</label><input type="file" id="eBannerF" accept="image/*"><div class="or">または URL</div><input type="url" id="eBannerU" placeholder="https://..."></div>
+  <div class="f"><label>サムネイル（カバー画像）（変更する場合のみ）</label><input type="file" id="eCoverF" accept="image/*"><div class="or">または URL</div><input type="url" id="eCoverU" placeholder="https://..."></div>
+  <div class="row"><button class="btn primary" id="eSave">保存</button><button class="btn" id="eCancel">キャンセル</button></div>
+</div></div>
+<!-- 会員ログイン -->
+<div class="overlay" id="auth"><div class="modal login" style="width:min(420px,94vw)">
+  <div class="tabs"><button data-m="in" class="on">ログイン</button><button data-m="up">新規登録</button></div>
+  <button class="btn gbtn" id="gBtn"><b>G</b> Google で続行</button>
+  <div class="or2">またはメールアドレスで</div>
+  <div class="f" id="nameF" style="display:none"><label>表示名</label><input type="text" id="auName" autocomplete="nickname"></div>
+  <div class="f"><label>メールアドレス</label><input type="text" id="auEmail" inputmode="email" autocomplete="email"></div>
+  <div class="f"><label>パスワード（6文字以上）</label><input type="password" id="auPw"></div>
+  <div class="err" id="auErr"></div>
+  <button class="btn primary" id="auGo" style="width:100%;justify-content:center">ログイン</button>
+  <small id="auMode"></small>
+</div></div>
+<!-- ローディング -->
+<div class="overlay" id="loader"><div class="spin"></div></div>
+<!-- ログイン -->
+<div class="overlay" id="login"><div class="modal login">
+  <h2>管理者ログイン</h2>
+  <small id="tokenHint">38桁の管理者トークンを入力してください。</small>
+  <div id="tokenBox" style="display:none;background:#000;border:1px dashed var(--blue);border-radius:6px;padding:10px;margin-bottom:14px;font-family:monospace;word-break:break-all;user-select:all"></div>
+  <input type="password" id="tokenIn" placeholder="epg-adm38-...">
+  <div class="row" style="margin-top:16px"><button class="btn primary" id="loginGo">ログイン</button><button class="btn" id="loginCancel">キャンセル</button></div>
+</div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const css = u => `url('${String(u).replace(/'/g, '%27').replace(/"/g, '%22')}')`;
+const BASE = ['Action','RPG','Racing','FPS','Horror','Simulation','Adventure','Engine'];
+const GL = {Action:'アクション',RPG:'RPG',Racing:'レーシング',FPS:'FPS',Horror:'ホラー',Simulation:'シミュレーション',Adventure:'アドベンチャー',Engine:'エンジン'};
+const gl = g => GL[g] || g;
+let isAdmin = sessionStorage.getItem('epg_admin') === '1';
+let curView = 'home', genre = 'All', heroIdx = 0, heroN = 0, heroTimer = null, heroPause = false, focusQ = false;
+
+const icons = () => window.lucide && lucide.createIcons();
+
+/* ---------- 画面遷移 ---------- */
+function show(v) {
+  curView = v;
+  document.querySelectorAll('.view').forEach(e => e.classList.toggle('active', e.id === 'view-' + v));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  ({ home: renderHome, store: renderStore, new: renderNew, ranking: renderRanking, admin: renderAdmin }[v] || (() => {}))();
+  stopHero(); if (v === 'home') startHero();
+  scrollTo({ top: 0 });
+}
+function goStore() {
+  if (curView === 'store') { if (focusQ) $('#q').focus(); focusQ = false; return; }
+  const l = $('#loader'); l.classList.add('open');
+  setTimeout(() => { l.classList.remove('open'); show('store'); if (focusQ) $('#q').focus(); focusQ = false; }, 2000 + Math.random() * 1000);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => b.dataset.view === 'store' ? goStore() : show(b.dataset.view));
+$('#logo').onclick = () => show('home');
+$('#searchBtn').onclick = () => { focusQ = true; goStore(); };
+addEventListener('scroll', () => $('#hd').classList.toggle('sc', scrollY > 20), { passive: true });
+
+/* ---------- ダウンロード ---------- */
+function download(id) {
+  const g = GameStore.getById(id);
+  if (!g || !g.exeUrl) return alert('このゲームにはEXEファイルが登録されていません。');
+  GameStore.addDownload(id);
+  const a = document.createElement('a');
+  a.href = g.exeUrl; a.download = g.exeName || (g.title + '.exe'); a.target = '_blank';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- 共通カード / 横スクロール行 ---------- */
+const cardHTML = (g, badge = '') => `<div class="card" data-id="${g.id}"><div class="im" style="background-image:${css(g.banner || g.cover)}">${badge}<div class="ov"><p>${esc(g.description)}</p><span class="pill">詳細を見る →</span></div></div><div class="t">${esc(g.title)}</div><div class="g">${esc(gl(g.genre))}</div></div>`;
+const rowHTML = (id, en, title, list, badge = '') => `<section class="rowsec"><div class="sh"><div><span class="en">${en}</span><h3>${title}</h3></div><div class="arr"><button data-s="${id}" data-d="-1"><i data-lucide="chevron-left"></i></button><button data-s="${id}" data-d="1"><i data-lucide="chevron-right"></i></button></div></div><div class="rail" id="rail-${id}">${list.length ? list.map(g => cardHTML(g, badge)).join('') : '<div class="empty">ゲームがありません</div>'}</div></section>`;
+document.addEventListener('click', e => {
+  const dl = e.target.closest('[data-dl]'); if (dl) return download(dl.dataset.dl);
+  const sb = e.target.closest('[data-s]');
+  if (sb) { const r = $('#rail-' + sb.dataset.s); return r.scrollBy({ left: +sb.dataset.d * r.clientWidth * .9, behavior: 'smooth' }); }
+  const gc = e.target.closest('[data-genre]'); if (gc) { genre = gc.dataset.genre; return goStore(); }
+  const op = e.target.closest('[data-open],.card,.rank'); if (op) openDetail(op.dataset.open || op.dataset.id);
+});
+
+/* ---------- ホーム ---------- */
+function renderHome() {
+  const all = GameStore.getVisible();
+  buildHero(all.slice(0, 6));
+  const gs = [...new Set(all.map(g => g.genre))];
+  $('#homeRows').innerHTML = rowHTML('f', 'FEATURED', '注目のゲーム', all)
+    + rowHTML('n', 'NEW', '新着ゲーム', GameStore.getNewest(12), '<span class="badge">NEW</span>')
+    + rowHTML('p', 'POPULAR', '人気ゲーム', GameStore.getPopular(12))
+    + (gs.length ? `<section class="rowsec"><div class="sh"><div><span class="en">GENRES</span><h3>ジャンルから探す</h3></div></div><div class="chips">${gs.map(x => `<button class="chip" data-genre="${esc(x)}">${esc(gl(x))}</button>`).join('')}</div></section>` : '');
+  icons();
+}
+function buildHero(list) {
+  heroN = list.length; heroIdx = Math.min(heroIdx, Math.max(heroN - 1, 0));
+  $('#hero').innerHTML = !heroN ? '<div class="empty" style="padding-top:140px">公開中のゲームがありません</div>' :
+    list.map((g, i) => `<div class="hs ${i === heroIdx ? 'on' : ''}" style="background-image:${css(g.banner)}"><div class="hp"><span class="tag">${esc(gl(g.genre))}</span><h2>${esc(g.title)}</h2><p>${esc(g.description)}</p><div class="row"><button class="btn primary" data-open="${g.id}">詳細を見る</button><button class="btn" data-dl="${g.id}"><i data-lucide="download"></i>.exe</button></div></div></div>`).join('')
+    + (heroN > 1 ? `<button class="ha l" data-a="p"><i data-lucide="chevron-left"></i></button><button class="ha r" data-a="n"><i data-lucide="chevron-right"></i></button><div class="dots">${list.map((_, i) => `<span data-a="${i}" class="${i === heroIdx ? 'on' : ''}"></span>`).join('')}</div>` : '');
+}
+function goHero(i) {
+  heroIdx = (i + heroN) % heroN;
+  document.querySelectorAll('.hs').forEach((s, k) => s.classList.toggle('on', k === heroIdx));
+  document.querySelectorAll('.dots span').forEach((s, k) => s.classList.toggle('on', k === heroIdx));
+}
+function startHero() { stopHero(); heroTimer = setInterval(() => { if (!heroPause && heroN > 1 && curView === 'home') goHero(heroIdx + 1); }, 6000); }
+function stopHero() { clearInterval(heroTimer); }
+(() => {
+  const hero = $('#hero'); let x0 = 0;
+  hero.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (!a) return; const v = a.dataset.a; goHero(v === 'p' ? heroIdx - 1 : v === 'n' ? heroIdx + 1 : +v); startHero(); });
+  hero.onmouseenter = () => heroPause = true; hero.onmouseleave = () => heroPause = false;
+  hero.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; heroPause = true; }, { passive: true });
+  hero.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - x0; heroPause = false; if (Math.abs(dx) > 50) { goHero(heroIdx + (dx < 0 ? 1 : -1)); startHero(); } }, { passive: true });
+})();
+
+/* ---------- ストア / 新着 / ランキング ---------- */
+function renderStore() {
+  const gs = ['All', ...new Set([...BASE, ...GameStore.getVisible().map(g => g.genre)])];
+  $('#chips').innerHTML = gs.map(g => `<button class="chip ${g === genre ? 'active' : ''}" data-g="${esc(g)}">${g === 'All' ? 'すべて' : esc(gl(g))}</button>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(c => c.onclick = () => { genre = c.dataset.g; renderStore(); });
+  const q = $('#q').value.trim().toLowerCase();
+  const list = GameStore.getVisible().filter(g => (genre === 'All' || g.genre === genre) && g.title.toLowerCase().includes(q));
+  $('#storeGrid').innerHTML = list.length ? list.map(g => cardHTML(g)).join('') : '<div class="empty">該当するゲームがありません</div>';
+  icons();
+}
+$('#q').oninput = renderStore;
+function renderNew() {
+  const l = GameStore.getNewest(100);
+  $('#newGrid').innerHTML = l.length ? l.map((g, i) => cardHTML(g, i < 3 ? '<span class="badge">NEW</span>' : '')).join('') : '<div class="empty">ゲームがありません</div>';
+  icons();
+}
+function renderRanking() {
+  const l = GameStore.getPopular(100);
+  $('#rankList').innerHTML = l.length ? l.map((g, i) => `<div class="rank" data-id="${g.id}"><span class="no">${String(i + 1).padStart(2, '0')}</span><div class="rth" style="background-image:${css(g.banner || g.cover)}"></div><div class="m"><b>${esc(g.title)}</b><span>${esc(gl(g.genre))} ・ ${g.downloads || 0} DL</span></div><button class="btn">詳細</button></div>`).join('') : '<div class="empty">ゲームがありません</div>';
+}
+
+/* ---------- 詳細モーダル / フルスクリーン ---------- */
+/* ---------- ゲーム詳細ページ (Epic風) ---------- */
+let curDetail = null, backTo = 'home', detailImg = 0;
+function openDetail(id) {
+  if (curView !== 'detail') backTo = curView;
+  curDetail = id; detailImg = 0; show('detail'); renderDetail();
+}
+function renderDetail() {
+  const g = GameStore.getById(curDetail); if (!g) return show('home');
+  const imgs = [g.banner, g.cover];
+  $('#detailPage').innerHTML = `<button class="back" id="dBack"><i data-lucide="arrow-left"></i> 戻る</button>
+    <h1 class="dt">${esc(g.title)}</h1>
+    <div class="dmeta"><span class="tag">${esc(g.genre)}</span><span><i data-lucide="monitor"></i> Windows</span></div>
+    <div class="dgrid"><div>
+      <div class="dmain" style="background-image:${css(imgs[detailImg])};background-size:${detailImg ? 'contain' : 'cover'}"></div>
+      <div class="dthumbs"><button class="ar" id="dPrev"><i data-lucide="chevron-left"></i></button>
+        ${imgs.map((u, i) => `<div class="th ${i === detailImg ? 'on' : ''}" data-i="${i}" style="background-image:${css(u)}"></div>`).join('')}
+        <button class="ar" id="dNext"><i data-lucide="chevron-right"></i></button></div>
+      <p class="ddesc">${esc(g.description)}</p></div>
+      <aside><div class="dlogo" style="background-image:${css(g.cover)}"></div>
+        <span class="tag">ゲーム本編</span>
+        <button class="btn primary big" id="dDl"><i data-lucide="download"></i>.exe ダウンロード</button>
+        <div class="ir"><span>ジャンル</span><b>${esc(g.genre)}</b></div>
+        <div class="ir"><span>プラットフォーム</span><b>Windows</b></div>
+        <div class="ir"><span>ファイル名</span><b>${esc(g.exeName || '—')}</b></div></aside></div>`;
+  const go = i => { detailImg = (i + imgs.length) % imgs.length; renderDetail(); };
+  $('#dBack').onclick = () => show(backTo);
+  $('#dDl').onclick = () => download(g.id);
+  $('#dPrev').onclick = () => go(detailImg - 1);
+  $('#dNext').onclick = () => go(detailImg + 1);
+  document.querySelectorAll('.th').forEach(t => t.onclick = () => go(+t.dataset.i));
+  icons();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('#edit').classList.remove('open'); $('#login').classList.remove('open'); } });
+
+/* ---------- 管理者 ---------- */
+function syncAdminUI() {
+  $('#adminBtn').querySelector('span').textContent = isAdmin ? '管理画面' : '管理者';
+  $('#logoutBtn').style.display = isAdmin ? '' : 'none';
+}
+$('#adminBtn').onclick = () => isAdmin ? show('admin') : ($('#login').classList.add('open'), $('#tokenIn').focus());
+$('#loginCancel').onclick = () => $('#login').classList.remove('open');
+$('#loginGo').onclick = async () => {
+  if (await GameStore.verifyToken($('#tokenIn').value)) {
+    isAdmin = true; sessionStorage.setItem('epg_admin', '1');
+    $('#login').classList.remove('open'); $('#tokenIn').value = ''; syncAdminUI(); show('admin');
+  } else alert('トークンが正しくありません。');
+};
+$('#tokenIn').onkeydown = e => { if (e.key === 'Enter') $('#loginGo').click(); };
+$('#logoutBtn').onclick = () => { isAdmin = false; sessionStorage.removeItem('epg_admin'); syncAdminUI(); show('home'); };
+
+function renderAdmin() {
+  if (!isAdmin) return show('home');
+  const list = GameStore.getAll();
+  $('#adminList').innerHTML = list.length ? list.map(g => `
+    <div class="item"><img src="${esc(g.banner)}" alt=""><div class="m"><b>${esc(g.title)}</b><span class="tag">${esc(g.genre)}</span></div>
+      <button class="tg ${g.isVisible ? 'on' : ''}" data-t="${g.id}">${g.isVisible ? 'ストア表示中（公開）' : '非公開'}</button>
+      <button class="btn" data-e="${g.id}"><i data-lucide="pencil"></i></button><button class="btn danger" data-d="${g.id}"><i data-lucide="trash-2"></i></button></div>`).join('') : '<div class="empty">ゲームがありません</div>';
+  $('#adminList').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { GameStore.toggleVisible(b.dataset.t); renderAdmin(); });
+  $('#adminList').querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
+    if (confirm('このゲームを削除しますか？')) { GameStore.remove(b.dataset.d); renderAdmin(); }
+  });
+  $('#adminList').querySelectorAll('[data-e]').forEach(b => b.onclick = () => openEdit(b.dataset.e));
+  icons();
+}
+let editId = null;
+function openEdit(id) {
+  const g = GameStore.getById(id); if (!g) return; editId = id;
+  $('#eTitle').value = g.title; $('#eGenre').value = g.genre; $('#eDesc').value = g.description;
+  $('#eBannerF').value = ''; $('#eCoverF').value = '';
+  $('#eBannerU').value = g.banner.startsWith('data:') ? '' : g.banner;
+  $('#eCoverU').value = g.cover.startsWith('data:') ? '' : g.cover;
+  $('#edit').classList.add('open');
+}
+$('#eCancel').onclick = () => $('#edit').classList.remove('open');
+$('#eSave').onclick = async () => {
+  const title = $('#eTitle').value.trim(); if (!title) return alert('タイトルを入力してください。');
+  const g = GameStore.getById(editId);
+  const [bn, cv] = await Promise.all([pick('#eBannerF', '#eBannerU'), pick('#eCoverF', '#eCoverU')]);
+  if (GameStore.update(editId, { title, genre: $('#eGenre').value, description: $('#eDesc').value.trim(), banner: bn.data || g.banner, cover: cv.data || g.cover })) {
+    $('#edit').classList.remove('open'); renderAdmin();
+  }
+};
+const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+async function pick(fileId, urlId) {
+  const f = $(fileId).files[0];
+  return f ? { data: await readFile(f), name: f.name } : { data: $(urlId).value.trim(), name: '' };
+}
+$('#addBtn').onclick = async () => {
+  const title = $('#aTitle').value.trim();
+  if (!title) return alert('タイトルを入力してください。');
+  const [bn, cv, ex] = await Promise.all([pick('#aBannerF', '#aBannerU'), pick('#aCoverF', '#aCoverU'), pick('#aExeF', '#aExeU')]);
+  const exeName = ex.name || (ex.data ? (ex.data.split('/').pop().split('?')[0] || title + '.exe') : '');
+  const ok = GameStore.add({
+    title, genre: $('#aGenre').value, description: $('#aDesc').value.trim(),
+    banner: bn.data || cv.data, cover: cv.data || bn.data, exeUrl: ex.data, exeName
+  });
+  if (ok) {
+    ['#aTitle', '#aDesc', '#aBannerF', '#aBannerU', '#aCoverF', '#aCoverU', '#aExeF', '#aExeU'].forEach(s => $(s).value = '');
+    renderAdmin();
+  }
+};
+
+(async () => {
+  const { token, isNew } = await GameStore.ensureToken();
+  const box = $('#tokenBox'), hint = $('#tokenHint');
+  if (GameStore.DEMO_MODE && token) {
+    box.style.display = 'block'; box.textContent = token;
+    hint.innerHTML = '<b>【デモ版】</b>あなたの管理者トークン（下記）を入力してください。';
+  } else if (isNew && token) {
+    box.style.display = 'block'; box.textContent = token;
+    hint.innerHTML = '<b style="color:#ff6b6b">このトークンは今回だけ表示されます。必ず控えてください。</b>';
+    $('#login').classList.add('open');
+  } else {
+    hint.textContent = '38桁の管理者トークンを入力してください。';
+  }
+})();
+syncAdminUI(); renderHome(); startHero(); icons();
+
+/* ---------- 会員ログイン ---------- */
+let authMode = 'in';
+const closeAuth = () => $('#auth').classList.remove('open');
+function setAuthMode(m) {
+  authMode = m;
+  document.querySelectorAll('#auth .tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('#nameF').style.display = m === 'up' ? '' : 'none';
+  $('#auGo').textContent = m === 'up' ? 'アカウント作成' : 'ログイン';
+  $('#auPw').autocomplete = m === 'up' ? 'new-password' : 'current-password';
+  $('#auErr').textContent = '';
+}
+function openAuth(m = 'in') {
+  setAuthMode(m);
+  $('#auMode').innerHTML = Auth.mode === 'local' ? '⚠ <b>デモモード</b>：Firebase 未設定のため、アカウントはこのブラウザ内にのみ保存されます（Google ログインは使えません）。' : '';
+  $('#gBtn').disabled = Auth.mode === 'local';
+  $('#auth').classList.add('open'); $('#auEmail').focus();
+}
+async function runAuth(fn) {
+  const err = $('#auErr'); err.textContent = ''; $('#auGo').disabled = $('#gBtn').disabled = true;
+  try { await fn(); closeAuth(); $('#auPw').value = ''; } catch (e) { err.textContent = e.message; }
+  $('#auGo').disabled = false; $('#gBtn').disabled = Auth.mode === 'local';
+}
+const submitAuth = () => runAuth(() => authMode === 'up'
+  ? Auth.signUp($('#auEmail').value.trim(), $('#auPw').value, $('#auName').value.trim())
+  : Auth.signIn($('#auEmail').value.trim(), $('#auPw').value));
+$('#auGo').onclick = submitAuth;
+$('#gBtn').onclick = () => runAuth(() => Auth.google());
+['#auEmail', '#auPw', '#auName'].forEach(s => $(s).onkeydown = e => { if (e.key === 'Enter') submitAuth(); });
+document.querySelectorAll('#auth .tabs button').forEach(b => b.onclick = () => setAuthMode(b.dataset.m));
+$('#auth').onclick = e => { if (e.target.id === 'auth') closeAuth(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAuth(); });
+$('#userBtn').onclick = () => Auth.user ? $('#umenu').classList.toggle('open') : openAuth();
+$('#umOut').onclick = () => Auth.signOut();
+document.addEventListener('click', e => { if (!e.target.closest('#userBtn,#umenu')) $('#umenu').classList.remove('open'); });
+Auth.onChange(u => {
+  const b = $('#userBtn');
+  if (u) {
+    b.innerHTML = `<span class="av">${u.photo ? `<img src="${esc(u.photo)}" alt="" referrerpolicy="no-referrer">` : esc((u.name || '?')[0].toUpperCase())}</span><span>${esc(u.name)}</span>`;
+    $('#umInfo').textContent = u.email || '';
+  } else { b.innerHTML = '<i data-lucide="user"></i><span>ログイン</span>'; $('#umenu').classList.remove('open'); }
+  icons();
+});
+</script>
+</body>
+</html>
