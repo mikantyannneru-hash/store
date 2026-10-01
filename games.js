@@ -142,3 +142,39 @@ const GameStore = (() => {
     }
   };
 })();
+
+/* 引き換えコード & ライブラリ (localStorage / フロントエンドのみのデモ実装) */
+const CodeStore = (() => {
+  const K = 'epg_codes_v1', LIB = 'epg_lib_';
+  const all = () => { try { return JSON.parse(localStorage.getItem(K) || '[]'); } catch (e) { return []; } };
+  const save = l => localStorage.setItem(K, JSON.stringify(l));
+  const norm = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const lib = uid => { try { return JSON.parse(localStorage.getItem(LIB + uid) || '[]'); } catch (e) { return []; } };
+  return {
+    list: all,
+    gen(gameId) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', buf = new Uint32Array(15);
+      crypto.getRandomValues(buf);
+      const raw = Array.from(buf, n => chars[n % chars.length]).join('');
+      const code = raw.match(/.{5}/g).join('-');
+      const l = all(); l.push({ code, gameId, createdAt: Date.now(), redeemedBy: null, redeemedAt: null }); save(l);
+      return code;
+    },
+    remove(code) { save(all().filter(c => c.code !== code)); },
+    library(uid) { return lib(uid); },
+    redeem(input, uid) {
+      const n = norm(input);
+      if (n.length !== 15) return { ok: false, error: 'コードは15文字（XXXXX-XXXXX-XXXXX）で入力してください。' };
+      const l = all(), c = l.find(x => norm(x.code) === n);
+      if (!c) return { ok: false, error: '無効なコードです。' };
+      if (c.redeemedBy) return { ok: false, error: 'このコードは既に使用されています。' };
+      const game = GameStore.getById(c.gameId);
+      if (!game) return { ok: false, error: 'このコードに対応するゲームが見つかりません。' };
+      const mine = lib(uid);
+      if (mine.includes(game.id)) return { ok: false, error: 'このゲームは既にライブラリにあります（コードは消費されません）。' };
+      c.redeemedBy = uid; c.redeemedAt = Date.now(); save(l);
+      mine.push(game.id); localStorage.setItem(LIB + uid, JSON.stringify(mine));
+      return { ok: true, game };
+    }
+  };
+})();

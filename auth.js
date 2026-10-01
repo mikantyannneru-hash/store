@@ -17,6 +17,7 @@ const Auth = (() => {
     'auth/wrong-password': 'メールアドレスまたはパスワードが違います',
     'auth/popup-closed-by-user': 'ログインがキャンセルされました',
     'auth/network-request-failed': 'ネットワークエラーが発生しました',
+    'auth/requires-recent-login': 'セキュリティのため、一度ログアウトして再ログインしてからお試しください',
     'auth/too-many-requests': '試行回数が多すぎます。しばらくしてからお試しください',
     'auth/unauthorized-domain': 'このドメインは Firebase の承認済みドメインに追加されていません',
     'auth/operation-not-supported-in-this-environment': 'この環境では使えません。http://localhost などで開いてください'
@@ -28,7 +29,7 @@ const Auth = (() => {
     await load(b + 'firebase-app-compat.js'); await load(b + 'firebase-auth-compat.js');
     firebase.initializeApp(FIREBASE_CONFIG); return firebase.auth();
   })());
-  const fromFb = u => u && { uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0], photo: u.photoURL };
+  const fromFb = u => u && { uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0], photo: u.photoURL, hasPassword: (u.providerData || []).some(p => p.providerId === 'password') };
   const hash = async (pw, salt) => {
     const d = salt + pw;
     if (!(window.crypto && crypto.subtle)) return btoa(unescape(encodeURIComponent(d)));
@@ -40,8 +41,13 @@ const Auth = (() => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(MSG['auth/invalid-email']);
     if (pw.length < 6) throw new Error(MSG['auth/weak-password']);
   };
-  const localUser = email => { const u = users()[email]; return u && { uid: email, email, name: u.name, photo: null }; };
+  const localUser = email => { const u = users()[email]; return u && { uid: email, email, name: u.name, photo: null, hasPassword: true }; };
 
+  const reauth = async pw => {
+    const a = await fb(), u = a.currentUser;
+    await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, pw)); return u;
+  };
+  const PFX = ['epg_profile_', 'epg_lib_'];
   if (mode === 'firebase') fb().then(a => a.onAuthStateChanged(u => set(fromFb(u)))).catch(e => console.error(e));
   else user = localUser(localStorage.getItem(SESS));
 
@@ -72,6 +78,32 @@ const Auth = (() => {
     async google() {
       if (mode !== 'firebase') throw new Error('Google ログインには Firebase の設定が必要です（auth.js の FIREBASE_CONFIG）');
       try { await (await fb()).signInWithPopup(new firebase.auth.GoogleAuthProvider()); } catch (e) { fail(e); }
+    },
+    getProfile() { try { return JSON.parse(localStorage.getItem('epg_profile_' + user.uid) || '{}'); } catch (e) { return {}; } },
+    setProfile(p) { localStorage.setItem('epg_profile_' + user.uid, JSON.stringify(p)); },
+    async updateName(name) {
+      if (mode === 'firebase') { try { const a = await fb(); await a.currentUser.updateProfile({ displayName: name }); set(fromFb(a.currentUser)); } catch (e) { fail(e); } }
+      else { const all = users(); all[user.uid].name = name; localStorage.setItem(USERS, JSON.stringify(all)); set(localUser(user.uid)); }
+    },
+    /** 戻り値: 'done' (即時変更) / 'verify' (確認メール送信) */
+    async changeEmail(newEmail, pw) {
+      check(newEmail, pw);
+      if (mode === 'firebase') { try { await (await reauth(pw)).verifyBeforeUpdateEmail(newEmail); return 'verify'; } catch (e) { fail(e); } }
+      const all = users(), old = user.uid, u = all[old];
+      if (u.hash !== await hash(pw, u.salt)) throw new Error(MSG['auth/invalid-credential']);
+      if (all[newEmail]) throw new Error(MSG['auth/email-already-in-use']);
+      all[newEmail] = u; delete all[old];
+      PFX.forEach(p => { const v = localStorage.getItem(p + old); if (v !== null) { localStorage.setItem(p + newEmail, v); localStorage.removeItem(p + old); } });
+      localStorage.setItem(USERS, JSON.stringify(all)); localStorage.setItem(SESS, newEmail); set(localUser(newEmail));
+      return 'done';
+    },
+    async changePassword(cur, nw) {
+      if (nw.length < 6) throw new Error(MSG['auth/weak-password']);
+      if (mode === 'firebase') { try { await (await reauth(cur)).updatePassword(nw); return; } catch (e) { fail(e); } }
+      const all = users(), u = all[user.uid];
+      if (u.hash !== await hash(cur, u.salt)) throw new Error('現在のパスワードが違います');
+      u.salt = Math.random().toString(36).slice(2); u.hash = await hash(nw, u.salt);
+      localStorage.setItem(USERS, JSON.stringify(all));
     },
     async signOut() {
       if (mode === 'firebase') await (await fb()).signOut(); else { localStorage.removeItem(SESS); set(null); }

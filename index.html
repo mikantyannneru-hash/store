@@ -137,6 +137,10 @@ nav button.active{color:#07070d;background:linear-gradient(120deg,var(--a),var(-
 .av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));color:#07070d;display:grid;place-items:center;font-size:12px;font-weight:900;overflow:hidden}.av img{width:100%;height:100%;object-fit:cover}
 #userBtn{max-width:180px}#userBtn span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:599px){#userBtn span:last-child{display:none}}
+.acc{display:grid;gap:20px;max-width:720px}.note{color:var(--mute);font-size:14px;margin-bottom:14px;line-height:1.6}
+.msg{font-size:13px;min-height:18px;margin:6px 0 10px}.msg.bad{color:#ff7b7b}.msg.ok{color:var(--b)}
+.rd{display:flex;gap:12px}.rd input{font-family:monospace;font-size:20px;letter-spacing:2px;text-align:center}
+#umenu button{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:8px;background:none;text-align:left;margin-bottom:2px}#umenu button:hover{background:var(--panel2)}#umenu #umOut{margin-top:6px;border-top:1px solid var(--line);border-radius:0 0 8px 8px}#umenu #umOut:hover{background:#c0392b}
 </style>
 </head>
 <body>
@@ -146,7 +150,7 @@ nav button.active{color:#07070d;background:linear-gradient(120deg,var(--a),var(-
   <div class="row">
     <button class="btn" id="searchBtn" title="検索"><i data-lucide="search"></i></button>
     <div style="position:relative"><button class="btn" id="userBtn"><i data-lucide="user"></i><span>ログイン</span></button>
-      <div id="umenu"><div id="umInfo"></div><button id="umOut">ログアウト</button></div></div>
+      <div id="umenu"><div id="umInfo"></div><button id="umAcc"><i data-lucide="settings"></i>アカウント設定</button><button id="umRd"><i data-lucide="ticket"></i>コード引き換え</button><button id="umOut"><i data-lucide="log-out"></i>ログアウト</button></div></div>
     <button class="btn" id="adminBtn"><i data-lucide="shield"></i><span>管理者</span></button>
     <button class="btn" id="logoutBtn" style="display:none"><i data-lucide="log-out"></i></button>
   </div>
@@ -175,9 +179,42 @@ nav button.active{color:#07070d;background:linear-gradient(120deg,var(--a),var(-
         <button class="btn primary" id="addBtn" style="width:100%;justify-content:center"><i data-lucide="plus"></i>追加</button>
       </div>
       <div class="panel"><h3>登録済みゲーム</h3><div id="adminList"></div></div>
+      <div class="panel" style="grid-column:1/-1"><h3>引き換えコード発行</h3>
+        <div class="row" style="margin-bottom:12px"><select id="cdGame" style="max-width:320px"></select><button class="btn primary" id="cdGen"><i data-lucide="ticket"></i>コードを発行</button></div>
+        <div id="cdList"></div></div>
     </div>
   </section>
-<section class="view wrap" id="view-detail"><div id="detailPage"></div></section>
+<section class="view wrap" id="view-account">
+    <div class="ph"><span class="en">ACCOUNT</span><h1>アカウント設定</h1></div>
+    <div class="acc">
+      <div class="panel"><h3>プロフィール</h3>
+        <div class="f"><label>表示名</label><input type="text" id="acName" maxlength="30"></div>
+        <div class="f"><label>国 / 地域</label><select id="acCountry"></select></div>
+        <div class="f"><label>生年月日</label><input type="date" id="acBirth"></div>
+        <div class="msg" id="acMsg1"></div><button class="btn primary" id="acSave1">保存</button></div>
+      <div class="panel" id="acGoogleNote" style="display:none"><h3>メールアドレス・パスワード</h3><p class="note">Google アカウントでログイン中のため、メールアドレスとパスワードは Google 側で管理されます。</p></div>
+      <div id="acPwBlocks" class="acc" style="max-width:none">
+        <div class="panel"><h3>メールアドレスの変更</h3><p class="note">現在: <b id="acEmailNow"></b></p>
+          <div class="f"><label>新しいメールアドレス</label><input type="text" id="acNewEmail" inputmode="email"></div>
+          <div class="f"><label>現在のパスワード</label><input type="password" id="acEmailPw" autocomplete="current-password"></div>
+          <div class="msg" id="acMsg2"></div><button class="btn primary" id="acSave2">変更</button></div>
+        <div class="panel"><h3>パスワードの変更</h3>
+          <div class="f"><label>現在のパスワード</label><input type="password" id="acPwCur" autocomplete="current-password"></div>
+          <div class="f"><label>新しいパスワード（6文字以上）</label><input type="password" id="acPwNew" autocomplete="new-password"></div>
+          <div class="f"><label>新しいパスワード（確認）</label><input type="password" id="acPwNew2" autocomplete="new-password"></div>
+          <div class="msg" id="acMsg3"></div><button class="btn primary" id="acSave3">変更</button></div>
+      </div>
+    </div>
+  </section>
+  <section class="view wrap" id="view-redeem">
+    <div class="ph"><span class="en">REDEEM</span><h1>コード引き換え</h1></div>
+    <div class="panel" style="max-width:640px"><p class="note">配布されたコード（XXXXX-XXXXX-XXXXX）を入力すると、ゲームがライブラリに追加されます。</p>
+      <div class="rd"><input type="text" id="rdCode" placeholder="XXXXX-XXXXX-XXXXX" autocomplete="off" spellcheck="false"><button class="btn primary" id="rdGo">引き換え</button></div>
+      <div class="msg" id="rdMsg" style="margin-top:12px"></div></div>
+    <div class="sh" style="margin:34px 0 8px"><div><span class="en">LIBRARY</span><h3>ライブラリ</h3></div></div>
+    <div class="sgrid" id="libGrid"></div>
+  </section>
+  <section class="view wrap" id="view-detail"><div id="detailPage"></div></section>
 </main>
 
 <!-- 編集モーダル -->
@@ -225,20 +262,25 @@ let curView = 'home', genre = 'All', heroIdx = 0, heroN = 0, heroTimer = null, h
 
 const icons = () => window.lucide && lucide.createIcons();
 
-/* ---------- 画面遷移 ---------- */
-function show(v) {
+/* ---------- 画面遷移 (各ページ 1〜2秒のローディング付き) ---------- */
+let busy = false;
+function _show(v) {
   curView = v;
   document.querySelectorAll('.view').forEach(e => e.classList.toggle('active', e.id === 'view-' + v));
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
-  ({ home: renderHome, store: renderStore, new: renderNew, ranking: renderRanking, admin: renderAdmin }[v] || (() => {}))();
+  ({ home: renderHome, store: renderStore, new: renderNew, ranking: renderRanking, admin: renderAdmin, account: renderAccount, redeem: renderRedeem }[v] || (() => {}))();
   stopHero(); if (v === 'home') startHero();
   scrollTo({ top: 0 });
+  if (v === 'store' && focusQ) { $('#q').focus(); focusQ = false; }
 }
-function goStore() {
-  if (curView === 'store') { if (focusQ) $('#q').focus(); focusQ = false; return; }
-  const l = $('#loader'); l.classList.add('open');
-  setTimeout(() => { l.classList.remove('open'); show('store'); if (focusQ) $('#q').focus(); focusQ = false; }, 2000 + Math.random() * 1000);
+function show(v, instant) {
+  if (instant) return _show(v);
+  if (busy || (v === curView && v !== 'detail')) return;
+  if ((v === 'account' || v === 'redeem') && !Auth.user) return openAuth();
+  busy = true; $('#loader').classList.add('open');
+  setTimeout(() => { $('#loader').classList.remove('open'); busy = false; _show(v); }, (v === 'store' ? 2000 : 1000) + Math.random() * 1000);
 }
+function goStore() { if (curView === 'store') { if (focusQ) $('#q').focus(); focusQ = false; } else show('store'); }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => b.dataset.view === 'store' ? goStore() : show(b.dataset.view));
 $('#logo').onclick = () => show('home');
 $('#searchBtn').onclick = () => { focusQ = true; goStore(); };
@@ -322,11 +364,12 @@ function renderRanking() {
 /* ---------- ゲーム詳細ページ (Epic風) ---------- */
 let curDetail = null, backTo = 'home', detailImg = 0;
 function openDetail(id) {
+  if (busy) return;
   if (curView !== 'detail') backTo = curView;
   curDetail = id; detailImg = 0; show('detail'); renderDetail();
 }
 function renderDetail() {
-  const g = GameStore.getById(curDetail); if (!g) return show('home');
+  const g = GameStore.getById(curDetail); if (!g) return show('home', true);
   const imgs = [g.banner, g.cover];
   $('#detailPage').innerHTML = `<button class="back" id="dBack"><i data-lucide="arrow-left"></i> 戻る</button>
     <h1 class="dt">${esc(g.title)}</h1>
@@ -370,7 +413,7 @@ $('#tokenIn').onkeydown = e => { if (e.key === 'Enter') $('#loginGo').click(); }
 $('#logoutBtn').onclick = () => { isAdmin = false; sessionStorage.removeItem('epg_admin'); syncAdminUI(); show('home'); };
 
 function renderAdmin() {
-  if (!isAdmin) return show('home');
+  if (!isAdmin) return show('home', true);
   const list = GameStore.getAll();
   $('#adminList').innerHTML = list.length ? list.map(g => `
     <div class="item"><img src="${esc(g.banner)}" alt=""><div class="m"><b>${esc(g.title)}</b><span class="tag">${esc(g.genre)}</span></div>
@@ -381,7 +424,7 @@ function renderAdmin() {
     if (confirm('このゲームを削除しますか？')) { GameStore.remove(b.dataset.d); renderAdmin(); }
   });
   $('#adminList').querySelectorAll('[data-e]').forEach(b => b.onclick = () => openEdit(b.dataset.e));
-  icons();
+  renderCodes();
 }
 let editId = null;
 function openEdit(id) {
@@ -479,6 +522,74 @@ Auth.onChange(u => {
   } else { b.innerHTML = '<i data-lucide="user"></i><span>ログイン</span>'; $('#umenu').classList.remove('open'); }
   icons();
 });
+
+/* ---------- アカウント設定 ---------- */
+const COUNTRIES = ['日本','アメリカ合衆国','韓国','中国','台湾','香港','シンガポール','タイ','ベトナム','インド','オーストラリア','ニュージーランド','カナダ','イギリス','フランス','ドイツ','イタリア','スペイン','ブラジル','メキシコ','その他'];
+$('#acCountry').innerHTML = '<option value="">選択してください</option>' + COUNTRIES.map(c => `<option>${c}</option>`).join('');
+const msg = (id, t, ok) => { const e = $('#' + id); e.textContent = t; e.className = 'msg ' + (ok ? 'ok' : 'bad'); };
+async function acRun(id, btn, fn) {
+  msg(id, ''); $(btn).disabled = true;
+  try { msg(id, await fn(), true); } catch (e) { msg(id, e.message, false); }
+  $(btn).disabled = false;
+}
+function renderAccount() {
+  const u = Auth.user; if (!u) return show('home', true);
+  const p = Auth.getProfile();
+  $('#acName').value = u.name; $('#acCountry').value = p.country || ''; $('#acBirth').value = p.birthday || '';
+  $('#acBirth').max = new Date().toISOString().slice(0, 10); $('#acEmailNow').textContent = u.email || '';
+  $('#acPwBlocks').style.display = u.hasPassword ? 'grid' : 'none'; $('#acGoogleNote').style.display = u.hasPassword ? 'none' : '';
+  ['acMsg1', 'acMsg2', 'acMsg3'].forEach(i => msg(i, ''));
+}
+$('#acSave1').onclick = () => acRun('acMsg1', '#acSave1', async () => {
+  const name = $('#acName').value.trim(), b = $('#acBirth').value;
+  if (!name) throw new Error('表示名を入力してください');
+  if (b && (isNaN(new Date(b)) || b > new Date().toISOString().slice(0, 10))) throw new Error('生年月日が正しくありません');
+  if (name !== Auth.user.name) await Auth.updateName(name);
+  Auth.setProfile({ country: $('#acCountry').value, birthday: b }); return '保存しました';
+});
+$('#acSave2').onclick = () => acRun('acMsg2', '#acSave2', async () => {
+  const r = await Auth.changeEmail($('#acNewEmail').value.trim(), $('#acEmailPw').value);
+  $('#acNewEmail').value = ''; $('#acEmailPw').value = '';
+  if (r === 'done') { $('#acEmailNow').textContent = Auth.user.email; return 'メールアドレスを変更しました'; }
+  return '確認メールを送信しました。メール内のリンクを開くと変更が完了します。';
+});
+$('#acSave3').onclick = () => acRun('acMsg3', '#acSave3', async () => {
+  const n = $('#acPwNew').value; if (n !== $('#acPwNew2').value) throw new Error('新しいパスワードが一致しません');
+  await Auth.changePassword($('#acPwCur').value, n);
+  ['#acPwCur', '#acPwNew', '#acPwNew2'].forEach(s => $(s).value = ''); return 'パスワードを変更しました';
+});
+
+/* ---------- コード引き換え / ライブラリ ---------- */
+function renderRedeem() { msg('rdMsg', ''); $('#rdCode').value = ''; renderLibrary(); }
+function renderLibrary() {
+  const u = Auth.user; if (!u) return;
+  const list = CodeStore.library(u.uid).map(id => GameStore.getById(id)).filter(Boolean);
+  $('#libGrid').innerHTML = list.length ? list.map(g => cardHTML(g, g.isVisible ? '' : '<span class="badge">限定</span>')).join('') : '<div class="empty">まだゲームがありません。コードを引き換えるとここに追加されます。</div>';
+  icons();
+}
+$('#rdCode').oninput = e => { const n = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15); e.target.value = (n.match(/.{1,5}/g) || []).join('-'); };
+$('#rdCode').onkeydown = e => { if (e.key === 'Enter') $('#rdGo').click(); };
+$('#rdGo').onclick = () => {
+  const r = CodeStore.redeem($('#rdCode').value, Auth.user.uid);
+  msg('rdMsg', r.ok ? `「${r.game.title}」をライブラリに追加しました！` : r.error, r.ok);
+  if (r.ok) { $('#rdCode').value = ''; renderLibrary(); }
+};
+$('#umAcc').onclick = () => { $('#umenu').classList.remove('open'); show('account'); };
+$('#umRd').onclick = () => { $('#umenu').classList.remove('open'); show('redeem'); };
+Auth.onChange(u => { if (!u && (curView === 'account' || curView === 'redeem')) show('home', true); });
+
+/* ---------- 管理: コード発行 ---------- */
+function renderCodes() {
+  const sel = $('#cdGame'), prev = sel.value;
+  sel.innerHTML = GameStore.getAll().map(g => `<option value="${g.id}">${esc(g.title)}</option>`).join('');
+  if (prev) sel.value = prev;
+  const l = CodeStore.list().slice().reverse();
+  $('#cdList').innerHTML = l.length ? l.map(c => { const g = GameStore.getById(c.gameId); return `<div class="item"><div class="m"><b style="font-family:monospace">${esc(c.code)}</b><span class="tag">${esc(g ? g.title : '(削除済み)')}</span></div><span class="tg ${c.redeemedBy ? '' : 'on'}">${c.redeemedBy ? '使用済み' : '未使用'}</span><button class="btn" data-cc="${c.code}" title="コピー"><i data-lucide="copy"></i></button><button class="btn danger" data-cd="${c.code}"><i data-lucide="trash-2"></i></button></div>`; }).join('') : '<div class="empty">発行済みコードはありません</div>';
+  $('#cdList').querySelectorAll('[data-cc]').forEach(b => b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(b.dataset.cc); b.innerHTML = '✓'; });
+  $('#cdList').querySelectorAll('[data-cd]').forEach(b => b.onclick = () => { CodeStore.remove(b.dataset.cd); renderCodes(); });
+  icons();
+}
+$('#cdGen').onclick = () => { const id = $('#cdGame').value; if (!id) return alert('ゲームがありません。'); CodeStore.gen(id); renderCodes(); };
 </script>
 </body>
 </html>
